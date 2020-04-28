@@ -7,8 +7,8 @@
 params.infile = "file.vcf.gz"
 params.groups = "myfile.txt"
 params.bootstrap = 100
-params.listfolder = 'LISTS'
-params.outfolder = 'OUTPUT'
+params.listfolder = '${baseDir}/LISTS'
+params.outfolder = '${baseDir}/OUTPUT'
 params.spp = 'cow'
 params.allowExtrChr='--allow-extra-chr'
 params.setHHmiss='--set-hh-missing'
@@ -71,7 +71,7 @@ process transpose {
     val bname from bname_ch
 
     output:
-    file "transposed" into transposed_ch
+    tuple "transposed.tped", "transposed.tfam" into transposed_ch
 
     script:
     """
@@ -109,17 +109,17 @@ transposed_ch.into { tr1_ch; tr2_ch }
 
 process makeBSlists {
     tag "makeBS"
-    publishDir "${params.listfolder}"
 
     input:
-    path transposed from tr1_ch
+    each x from 1..params.bootstrap
+    tuple tped, tfam from tr1_ch
 
     output:
-    file "${params.listfolder}/BS_*" into BootstrapLists
+    tuple x, "BS_${x}.txt" into BootstrapLists
 
     script:
     """
-    MakeBootstrapLists.py ${transposed} ${params.bootstrap}
+    MakeBootstrapLists.py ${tped} ${params.bootstrap}
     """
 }
 
@@ -133,17 +133,17 @@ process ibs {
     tag "ibs.${x}"
 
     input: 
-        each x from 1..params.bootstrap
-        path transposed from transposed_ch
+        tuple x, "BS_${x}.txt" from BootstrapLists
+        tuple tped, tfam from transposed_ch
  
     output: 
         file "outtree_${x}" into bootstrapReplicateTrees
   
     script:
     """
-    BsTpedTmap.py ${transposed} ${params.listfolder}/BS_${x}.txt ${x}
+    BsTpedTmap.py ${tped} ${tfam} BS_${x}.txt ${x}
     arrange.R ${x}
-    plink --${params.spp} ${params.allowExtrChr} --threads ${cores} --allow-no-sex --nonfounders --tfile BS_${x} --distance 1-ibs flat-missing square --out BS_${x}
+    plink --${params.spp} ${params.allowExtrChr} --threads ${task.cpus} --allow-no-sex --nonfounders --tfile BS_${x} --distance 1-ibs flat-missing square --out BS_${x}
     rm BS_{0}.tped BS_{0}.tfam
     MakeTree.py ${x} && rm BS_${x}.mdist* ${params.listfolder}/BS_${x}.txt
     """
@@ -151,7 +151,7 @@ process ibs {
 
 process concatenateBootstrapReplicates {
     tag "combine"
-    publishDir "${params.outfolder}/combined"
+    publishDir "${params.outfolder}/combined", mode: 'copy'
 
     input:
     file bootstrapTreeList from bootstrapReplicateTrees.collect()
@@ -179,7 +179,7 @@ process concatenateBootstrapReplicates {
 
 process consensus {
     tag "consensusTree"
-    publishDir "${params.outfolder}/consensus"
+    publishDir "${params.outfolder}/consensus", mode: 'copy'
 
     input:
     file bstree from concat_ch
@@ -195,18 +195,16 @@ process consensus {
 
 process fixTree {
     tag "fixTree"
-    publishDir "${params.outfolder}/fixed"
+    publishDir "${params.outfolder}/fixed", mode: 'copy'
 
     input:
     file cns from consense_ch
-    path tfile from tr2_ch
 
     output:
     file "final.xml" into final_ch
 
     script:
     """
-    cut -f 1,2 -d ' ' ${tfile}.tfam > groups.txt
     FixGraphlanXml.py -i ${cnd} -g ${param.groups} > final.xml
     """
 }
@@ -218,7 +216,7 @@ process fixTree {
 
 process graphlan {
     tag "graphlan"
-    publishDir "${params.outfolder}/picture"
+    publishDir "${params.outfolder}/picture", mode: 'copy'
 
     input:
     file fin from final_ch
