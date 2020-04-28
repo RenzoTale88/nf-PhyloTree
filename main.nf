@@ -75,6 +75,11 @@ process makeBSlists {
 }
 
 
+/*
+ * Step 3. Perform parallel IBS tree definition and 
+ * concatenate them
+ */
+
 process ibs { 
     tag "ibs.${x}"
 
@@ -116,6 +121,13 @@ process concatenateBootstrapReplicates {
     """
 }
 
+
+/*
+ * Step 4. Get consensus tree from the different 
+ * phylogenetic trees. Then, fix the xml annotation to 
+ * make it compliant with graphlan
+ */
+
 process consensus {
     tag "consensusTree"
     publishDir ${params.outfolder}
@@ -150,6 +162,11 @@ process fixTree {
     """
 }
 
+
+/*
+ * Step 5. Run graphlan on the final tree
+ */
+
 process graphlan {
     tag "graphlan"
     publishDir ${params.outfolder}
@@ -164,5 +181,4 @@ process graphlan {
     """
     graphlan.py ${final} my_plot.png --dpi 300 --size 15
     """
-
 }
