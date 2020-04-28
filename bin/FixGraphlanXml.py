@@ -173,7 +173,6 @@ def withColours(inxml, font_size, markerScale):
 
 
 def main():
-    import sys
     args = parser()
 
 
