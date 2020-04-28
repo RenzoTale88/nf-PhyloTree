@@ -96,7 +96,7 @@ process ibs {
     arrange.R ${x}
     plink --allow-extra-chrs --threads ${cores} --allow-no-sex --nonfounders --tfile BS_${x} --distance 1-ibs flat-missing square --out BS_${x}
     rm BS_{0}.tped BS_{0}.tfam
-    MakeTree.py ${x}
+    MakeTree.py ${x} && rm BS_${x}.mdist* ${params.listfolder}/BS_${x}.txt
     """
 }
 
