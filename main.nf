@@ -5,6 +5,7 @@
  * and read pairs by using the command line options
  */
 params.infile = "file.vcf.gz"
+params.groups = "myfile.txt"
 params.bootstrap = '100'
 params.listfolder = 'LISTS'
 params.outfolder = 'OUTPUT'
@@ -158,7 +159,7 @@ process fixTree {
     script:
     """
     awk 'BEGIN{OFS="\t"}; {print $1,$2}' ${tfile}.tfam > groups.txt
-    FixGraphlanXml.py -i ${cnd} -g groups.txt > final.xml
+    FixGraphlanXml.py -i ${cnd} -g ${param.groups} > final.xml
     """
 }
 
