@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 def getColours(annotation, groups):
     import random as rn
