@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 
 def main():
     from Bio import Phylo
