@@ -16,7 +16,6 @@ def parser():
 
 def main():
     from Bio import Phylo
-    import sys
     args = parser()
     Phylo.convert(args.infile, args.infmt, args.outfile, args.outfmt)
 
