@@ -37,7 +37,6 @@ def noColours(inxml, font_size, markerScale):
     import xml.etree.ElementTree as ET
     CIxml='''<property applies_to="clade" datatype="xsd:string" id_ref="clade_marker_size" ref="A:1">{}</property>'''
     CIshape = '''<property applies_to="clade" datatype="xsd:string" id_ref="clade_marker_shape" ref="A:1">{}</property> '''
-    COLORxml = '''<property applies_to="clade" datatype="xsd:string" id_ref="clade_marker_color" ref="A:1">{}</property> '''
     ANNOTxmlA= '''<property applies_to="clade" datatype="xsd:string" id_ref="annotation" ref="A:1">{}</property>'''
     ANNOTxmlB= '''<property applies_to="clade" datatype="xsd:string" id_ref="annotation_background_color" ref="A:1">w</property>'''
     ANNOTxmlC= '''<property applies_to="clade" datatype="xsd:string" id_ref="annotation_rotation" ref="A:1">90</property>'''
@@ -80,9 +79,7 @@ def withoutColours(inxml, colours, font_size, markerScale):
     ANNOTxmlB= '''<property applies_to="clade" datatype="xsd:string" id_ref="annotation_background_color" ref="A:1">w</property>'''
     ANNOTxmlC= '''<property applies_to="clade" datatype="xsd:string" id_ref="annotation_rotation" ref="A:1">90</property>'''
     ANNOTxmlD= '''<property applies_to="clade" datatype="xsd:string" id_ref="annotation_font_size" ref="A:1">{}</property>'''.format(font_size)
-    iscolor = False
-    color = {"red":0, "green":0, "blue":0}
-
+    
 
 
 
