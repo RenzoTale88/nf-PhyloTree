@@ -6,11 +6,12 @@
  */
 params.infile = "file.vcf.gz"
 params.bootstrap = '100'
+params.listfolder = 'LISTS'
+params.outfolder = 'OUTPUT'
  
 
 /*
- * Step 1. Builds the genome index required by the mapping process and
- * the intervals for the analyses
+ * Step 1. Create file TPED/TMAP
  */
 
 process transpose {
@@ -53,78 +54,115 @@ process transpose {
 
 transposed_ch.into { tr1_ch, tr2_ch }
 
+/*
+ * Step 2. Create file lists of bootstrapped markers
+ */
+
 process makeBSlists {
-    publishDir "./LISTS"
+    tag "makeBS"
+    publishDir "${params.listfolder}"
 
     input:
     path transposed from tr1_ch
 
     output:
-    file "BS_*" into BootstrapLists
-}
-
-
- process bootstrapReplicateTrees {
-    publishDir "$results_path/$datasetID/bootstrapsReplicateTrees"
-
-    input:
-
-    output:
-    file "bootstrapTree_${x}.nwk" into bootstrapReplicateTrees
+    file "${params.listfolder}/BS_*" into BootstrapLists
 
     script:
-    // Generate Bootstrap Trees
-
     """
-    raxmlHPC -m PROTGAMMAJTT -n tmpPhylip${x} -s tmpPhylip${x}
-    mv "RAxML_bestTree.tmpPhylip${x}" bootstrapTree_${x}.nwk
+    MakeBootstrapLists.py ${transposed} ${params.bootstrap}
     """
 }
 
+
 process ibs { 
-    tag "ibs.${chrom}"
+    tag "ibs.${x}"
 
     input: 
         each x from 1..bootstrapReplicates
         path transposed from transposed_ch
  
     output: 
-        file "infile_${x}" into bootstrapReplicateTrees
+        file "outtree_${x}" into bootstrapReplicateTrees
   
     script:
     """
-    set +u; source activate xpclr
-    if [ ! -e ${params.outdir} ]; then mkdir ${params.outdir}; fi
-    if [ ! -e ${params.outdir}/${br1}_${br2} ]; then mkdir ${params.outdir}/${br1}_${br2}; fi
-
-    echo "xpclr -F vcf -I ${params.vcf} -Sa ${params.lists}/${br1}.txt -Sb ${params.lists}/${br2}.txt -O ${params.outdir}/${br1}_${br2}/${br1}_${br2}.${chrom}.xpclr -C ${chrom} --size ${params.winsize} --maxsnps ${maxsnp}"
-    xpclr -F vcf -I ${params.vcf} -Sa ${params.lists}/${br1}.txt -Sb ${params.lists}/${br2}.txt -O ${params.outdir}/${br1}_${br2}/${br1}_${br2}.${chrom}.xpclr -C ${chrom} --size ${params.winsize} --maxsnps ${params.maxsnp}
-
+    BsTpedTmap.py ${transposed} ${params.listfolder}/BS_${x}.txt ${x}
+    arrange.R ${x}
+    plink --allow-extra-chrs --threads ${cores} --allow-no-sex --nonfounders --tfile BS_${x} --distance 1-ibs flat-missing square --out BS_${x}
+    rm BS_{0}.tped BS_{0}.tfam
+    MakeTree.py ${x}
     """
 }
 
-process combine {
+process concatenateBootstrapReplicates {
     tag "combine"
- 
-    input: 
-        path outf from params.outdir 
- 
-    output: 
-        path "${params.outdir}" into xpclr_path_ch  
-  
+    publishDir "$params.outfolder"
+
+    input:
+    file bootstrapTreeList from bootstrapReplicateTrees.collect()
+
+    output:
+    file "concatenatedBootstrapTrees.nwk" into concat_ch
+
+    // Concatenate Bootstrap Trees
     script:
     """
-    
-    for f in `ls ${params.outdir}`; do 
-        if [ -e ${outf}/${f}/${f}.xpclr ]; then
-            rm ${outf}/${f}/${f}.xpclr
-        fi
-        for w in `ls ${outf}/${f}`; do 
-            cat ${outf}/${f}/${w} >> ${outf}/${f}/${f}.xpclr
-        done
-
-        echo "Done ${i}"
+    for treeFile in ${bootstrapTreeList}
+    do
+        cat \$treeFile >> concatenatedBootstrapTrees.nwk
     done
+
     """
 }
 
+process consensus {
+    tag "consensusTree"
+    publishDir ${params.outfolder}
+
+    input:
+    file bstree from concat_ch
+
+    output:
+    file "consensus.xml" into consense_ch
+
+    script:
+    """
+    ConsensusTree.py ${bstree}
+    """
+}
+
+process fixTree {
+    tag "fixTree"
+    publishDir ${params.outfolder}
+
+    input:
+    file cns from consense_ch
+    path tfile from tr2_ch
+
+    output:
+    file "final.xml" into final_ch
+
+    script:
+    """
+    awk 'BEGIN{OFS="\t"}; {print $1,$2}' ${tfile}.tfam > groups.txt
+    FixGraphlanXml.py -i ${cnd} -g groups.txt > final.xml
+    """
+}
+
+process graphlan {
+    tag "graphlan"
+    publishDir ${params.outfolder}
+
+    input:
+    file final from final_ch
+
+    output:
+    file "my_plot.png"
+
+    script:
+    """
+    graphlan.py ${final} my_plot.png --dpi 300 --size 15
+    """
+
+}
