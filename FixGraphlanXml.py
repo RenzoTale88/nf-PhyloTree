@@ -13,7 +13,7 @@ def getColours(annotation, groups):
 
 def hasEmbeddedColours(myfile):
     for line in open(myfile):
-        if "color" in myfile:
+        if "color" in line:
             return True
     return False
 
