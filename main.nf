@@ -6,54 +6,102 @@
  */
 params.infile = "file.vcf.gz"
 params.groups = "myfile.txt"
-params.bootstrap = '100'
+params.bootstrap = 100
 params.listfolder = 'LISTS'
 params.outfolder = 'OUTPUT'
- 
+params.spp = 'cow'
+params.allowExtrChr='--allow-extra-chr'
+params.setHHmiss='--set-hh-missing'
 
 /*
  * Step 1. Create file TPED/TMAP
  */
+process getType {
+
+    tag "getF"
+
+    output:
+    stdout ftype_ch
+
+    script:
+    """
+    python -c "import sys; filename=sys.argv[1].strip().split('/')[-1]; filesep=filename.split('.'); filesep = [ i for i in filesep if i != 'gz' and i!='bz' and i != 'bz2' and i!='zip' ]; print(filesep[-1]) " ${params.inputfile}
+    """
+}
+
+ftype_ch.set {ftype_ch_2}
+
+process getName {
+
+    tag "getN"
+
+    input:
+    val ftype from ftype_ch_2
+
+    output:
+    stdout bname_ch
+
+    script:
+    """
+    if [ "${ftype}" == "ped" ]
+    then    
+        python -c "import sys; print( sys.argv[1].replace('.ped', '') )" ${params.inputfile}
+    elif [ "${ftype}" == "bed" ]
+    then
+        python -c "import sys; print( sys.argv[1].replace('.bed', '') )" ${params.inputfile}
+    elif [ "${ftype}" != "${params.inputfile}" ]
+    then
+        python -c "import sys; print( sys.argv[1].replace('.{}'.format(sys.argv[2]), '') )" ${params.inputfile} ${ftype}
+    else
+        echo ${params.inputfile}
+    fi
+    """
+}
 
 process transpose {
     tag "transp"
 
+    errorStrategy { task.exitStatus == 0 ? 'finish' : 'retry' }
+    maxRetries = 1
+    
+    
+
     input:
-    path file from params.inputfile
+    val ftype from ftype_ch
+    val bname from bname_ch
 
     output:
     file "transposed" into transposed_ch
 
     script:
     """
-    ftype=`python -c "import sys; filename=sys.argv[1].strip().split('/'); filesep=filename.split('.'); filesep = [ i for i in filesep if i != 'gz' and i!='bz' and i != 'bz2' and i!='zip' ]; print(filesep[-1]) " ${file}`
-    if [ $ftype == "vcf" ]; then
-        plink --allow-extra-chrs --vcf ${file} --recode transpose --out transposed --threads $cpus
-    elif [ $ftype == "bcf" ]; then
-        plink --allow-extra-chrs --bcf ${file} --recode transpose --out transposed --threads $cpus
-    elif [ $ftype == "ped" ]; then
-        bname=` python -c "import sys; print( sys.argv[1].replace('.ped', '') )" ` 
-        plink --allow-extra-chrs --file ${bname} --recode transpose --out transposed --threads $cpus
-    elif [ $ftype == "bed" ]; then
-        bname=` python -c "import sys; print( sys.argv[1].replace('.bed', '') )" ` 
-        plink --allow-extra-chrs --bfile ${bname} --recode transpose --out transposed --threads $cpus
+    if [ "${ftype}" == "vcf" ]; then
+        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --vcf ${params.inputfile} --recode transpose --out transposed --threads ${task.cpus}
+    elif [ "${ftype}" == "bcf" ]; then
+        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --bcf ${params.inputfile} --recode transpose --out transposed --threads ${task.cpus}
+    elif [ "${ftype}" == "ped" ]; then
+        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --file ${bname} --recode transpose --out transposed --threads ${task.cpus}
+    elif [ "${ftype}" == "bed" ]; then
+        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --bfile ${bname} --recode transpose --out transposed --threads ${task.cpus}
     else
-        if [ -e ${file}.bed ]; then
-            plink --allow-extra-chrs --bfile ${file} --recode transpose --out transposed --threads $cpus
-        elif [ -e ${file}.ped ]; then
-            plink --allow-extra-chrs --file ${file} --recode transpose --out transposed --threads $cpus
-        elif [ -e ${file}.vcf ]; then
-            plink --allow-extra-chrs --vcf ${file}.vcf --recode transpose --out transposed --threads $cpus
-        elif [ -e ${file}.vcf.gz ]; then
-            plink --allow-extra-chrs --vcf ${file}.vcf.gz --recode transpose --out transposed --threads $cpus
-        elif [ -e ${file}.bcf ]; then
-            plink --allow-extra-chrs --bcf ${file}.bcf --recode transpose --out transposed --threads $cpus
+        if [ -e "${params.inputfile}.bed" ]; then
+            plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --bfile ${params.inputfile} --recode transpose --out transposed --threads ${task.cpus}
+        elif [ -e "${params.inputfile}.ped" ]; then
+            plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --file ${params.inputfile} --recode transpose --out transposed --threads ${task.cpus}
+        elif [ -e "${params.inputfile}.vcf" ]; then
+            plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --vcf ${params.inputfile}.vcf --recode transpose --out transposed --threads ${task.cpus}
+        elif [ -e "${params.inputfile}.vcf.gz" ]; then
+            plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --vcf ${params.inputfile}.vcf.gz --recode transpose --out transposed --threads ${task.cpus}
+        elif [ -e "${params.inputfile}.bcf" ]; then
+            plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --bcf ${params.inputfile}.bcf --recode transpose --out transposed --threads ${task.cpus}
+        else
+            echo "No file"
         fi
     fi
     """
 }
 
-transposed_ch.into { tr1_ch, tr2_ch }
+transposed_ch.into { tr1_ch; tr2_ch }
 
 /*
  * Step 2. Create file lists of bootstrapped markers
@@ -85,7 +133,7 @@ process ibs {
     tag "ibs.${x}"
 
     input: 
-        each x from 1..bootstrapReplicates
+        each x from 1..params.bootstrap
         path transposed from transposed_ch
  
     output: 
@@ -95,7 +143,7 @@ process ibs {
     """
     BsTpedTmap.py ${transposed} ${params.listfolder}/BS_${x}.txt ${x}
     arrange.R ${x}
-    plink --allow-extra-chrs --threads ${cores} --allow-no-sex --nonfounders --tfile BS_${x} --distance 1-ibs flat-missing square --out BS_${x}
+    plink --${params.spp} ${params.allowExtrChr} --threads ${cores} --allow-no-sex --nonfounders --tfile BS_${x} --distance 1-ibs flat-missing square --out BS_${x}
     rm BS_{0}.tped BS_{0}.tfam
     MakeTree.py ${x} && rm BS_${x}.mdist* ${params.listfolder}/BS_${x}.txt
     """
@@ -103,7 +151,7 @@ process ibs {
 
 process concatenateBootstrapReplicates {
     tag "combine"
-    publishDir "$params.outfolder"
+    publishDir "${params.outfolder}/combined"
 
     input:
     file bootstrapTreeList from bootstrapReplicateTrees.collect()
@@ -131,7 +179,7 @@ process concatenateBootstrapReplicates {
 
 process consensus {
     tag "consensusTree"
-    publishDir ${params.outfolder}
+    publishDir "${params.outfolder}/consensus"
 
     input:
     file bstree from concat_ch
@@ -147,7 +195,7 @@ process consensus {
 
 process fixTree {
     tag "fixTree"
-    publishDir ${params.outfolder}
+    publishDir "${params.outfolder}/fixed"
 
     input:
     file cns from consense_ch
@@ -158,7 +206,7 @@ process fixTree {
 
     script:
     """
-    awk 'BEGIN{OFS="\t"}; {print $1,$2}' ${tfile}.tfam > groups.txt
+    cut -f 1,2 -d ' ' ${tfile}.tfam > groups.txt
     FixGraphlanXml.py -i ${cnd} -g ${param.groups} > final.xml
     """
 }
@@ -170,16 +218,16 @@ process fixTree {
 
 process graphlan {
     tag "graphlan"
-    publishDir ${params.outfolder}
+    publishDir "${params.outfolder}/picture"
 
     input:
-    file final from final_ch
+    file fin from final_ch
 
     output:
     file "my_plot.png"
 
     script:
     """
-    graphlan.py ${final} my_plot.png --dpi 300 --size 15
+    graphlan.py ${fin} my_plot.png --dpi 300 --size 15
     """
 }
