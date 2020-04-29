@@ -7,8 +7,8 @@
 params.infile = "file.vcf.gz"
 params.groups = "myfile.txt"
 params.bootstrap = 10
-params.listfolder = '${baseDir}/LISTS'
-params.outfolder = '${baseDir}/OUTPUT'
+params.listfolder = "${baseDir}/LISTS"
+params.outfolder = "${baseDir}/OUTPUT"
 params.spp = 'cow'
 params.allowExtrChr='--allow-extra-chr'
 params.setHHmiss='--set-hh-missing'
