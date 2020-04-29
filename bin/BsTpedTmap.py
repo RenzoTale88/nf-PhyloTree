@@ -4,9 +4,10 @@ import sys
 import subprocess as sbp
 import random as rn
 
-tfile = sys.argv[1]             # Input tped/tfam suffix.
-bsfile=sys.argv[2]
-nboot=sys.argv[3]
+tped = sys.argv[1]             # Input tped/tfam suffix.
+tfam = sys.argv[2]
+bsfile=sys.argv[3]
+nboot=sys.argv[4]
 
 
 # Lists
@@ -14,11 +15,11 @@ inds = []
 markers = []
 
 # Store input tfam.
-for line in open(tfile + '.tfam'):
+for line in open(tfam):
 	inds.append(line)
 
 # Read input tped.
-for line in open(tfile + '.tped'):
+for line in open(tped):
 	markers.append(line)
 
 # Number of SNP to choose.

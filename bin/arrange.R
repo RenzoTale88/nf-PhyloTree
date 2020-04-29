@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-
-library(tidyverse)
+options(warn=-1, message = FALSE, readr.num_columns = 0)
+suppressPackageStartupMessages(library(tidyverse, quietly = TRUE))
 args = commandArgs(T)
 nboot = args[1]
 

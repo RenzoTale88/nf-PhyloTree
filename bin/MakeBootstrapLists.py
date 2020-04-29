@@ -13,10 +13,8 @@ inds = []
 markers = []
 
 # Read input tped.
-nsnp = len([line for line in open(tfile + '.tped')])
+nsnp = len([line for line in open(tfile)])
 
-# Make list directory
-if not os.path.isdir("./LISTS"): os.mkdir("./LISTS")
 
 # Perform bootstrap.
 for boot in range(0, nboots):

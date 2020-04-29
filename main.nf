@@ -6,7 +6,7 @@
  */
 params.infile = "file.vcf.gz"
 params.groups = "myfile.txt"
-params.bootstrap = 100
+params.bootstrap = 10
 params.listfolder = '${baseDir}/LISTS'
 params.outfolder = '${baseDir}/OUTPUT'
 params.spp = 'cow'
@@ -111,15 +111,34 @@ process makeBSlists {
     tag "makeBS"
 
     input:
-    each x from 1..params.bootstrap
+    //each x from 1..params.bootstrap
     tuple tped, tfam from tr1_ch
 
     output:
-    tuple x, "BS_${x}.txt" into BootstrapLists
+    // tuple x, "BS_${x}.txt" into BootstrapLists
+    path "LISTS" into workdir_ch
 
     script:
     """
     MakeBootstrapLists.py ${tped} ${params.bootstrap}
+    if [ ! -e LISTS ]; then mkdir LISTS; fi
+    mv BS_*.txt ./LISTS
+    """
+}
+
+process getBSlists {
+    tag "getBS"
+
+    input:
+    path mypath from workdir_ch
+    each x from 1..params.bootstrap
+
+    output:
+    tuple x, "${mypath}/BS_${x}.txt" into BootstrapLists
+
+    script:
+    """
+    echo ${mypath}
     """
 }
 
@@ -137,15 +156,15 @@ process ibs {
         tuple tped, tfam from transposed_ch
  
     output: 
-        file "outtree_${x}" into bootstrapReplicateTrees
+        file "outtree_${x}.nwk" into bootstrapReplicateTrees
   
     script:
     """
     BsTpedTmap.py ${tped} ${tfam} BS_${x}.txt ${x}
     arrange.R ${x}
     plink --${params.spp} ${params.allowExtrChr} --threads ${task.cpus} --allow-no-sex --nonfounders --tfile BS_${x} --distance 1-ibs flat-missing square --out BS_${x}
-    rm BS_{0}.tped BS_{0}.tfam
-    MakeTree.py ${x} && rm BS_${x}.mdist* ${params.listfolder}/BS_${x}.txt
+    rm BS_${x}.tped BS_${x}.tfam
+    MakeTree.py ${x} && rm BS_${x}.mdist*
     """
 }
 
@@ -205,7 +224,7 @@ process fixTree {
 
     script:
     """
-    FixGraphlanXml.py -i ${cnd} -g ${param.groups} > final.xml
+    FixGraphlanXml.py -i ${cns} -g ${params.groups} > final.xml
     """
 }
 
