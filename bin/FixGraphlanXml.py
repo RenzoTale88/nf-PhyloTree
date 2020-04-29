@@ -5,7 +5,7 @@ def getColours(annotation, groups):
     colours = {}
     tmp = []
     for g in groups:
-        palette = (rn.sample(0,255), rn.sample(0,255), rn.sample(0,255) ) 
+        palette = (rn.randint(0,255), rn.randint(0,255), rn.randint(0,255) ) 
         if palette not in tmp: 
             tmp.append(palette)
             colours[g] = [palette] 
@@ -102,7 +102,7 @@ def withoutColours(inxml, colours, font_size, markerScale):
             continue
         elif "<name>" in line and ET.fromstring(line).text != "tree1":
             cladeName = ET.fromstring(line).text
-            mycolour = colours[cladeName]
+            mycolour = colours[cladeName][0]
             mynewcolor = rgb2hex(mycolour[0], mycolour[1], mycolour[2])
             print("".join([' ' for i in line.split("<")[0] if i == ' ' ]) + ANNOTxmlA.format(cladeName))
             print("".join([' ' for i in line.split("<")[0] if i == ' ' ]) + ANNOTxmlB)
@@ -181,7 +181,7 @@ def main():
     font_size = int(args.font_size)
     markerScale = float(args.markerScale)
     if args.ingroup:
-        assignments = { line.strip().split()[0] : line.strip().split()[1] for line in open(args.ingroup) }
+        assignments = { line.strip().split()[1] : line.strip().split()[0] for line in open(args.ingroup) }
         groups = list(set( assignments.values() ))
         colours = getColours(assignments, groups)
 
