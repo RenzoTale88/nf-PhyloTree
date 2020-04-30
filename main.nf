@@ -120,7 +120,7 @@ process makeBSlists {
 
     script:
     """
-    MakeBootstrapLists.py ${tped} ${params.bootstrap}
+    MakeBootstrapLists ${tped} ${params.bootstrap}
     if [ ! -e LISTS ]; then mkdir LISTS; fi
     mv BS_*.txt ./LISTS
     """
@@ -160,11 +160,11 @@ process ibs {
   
     script:
     """
-    BsTpedTmap.py ${tped} ${tfam} BS_${x}.txt ${x}
-    arrange.R ${x}
+    BsTpedTmap ${tped} ${tfam} BS_${x}.txt ${x}
+    arrange ${x}
     plink --${params.spp} ${params.allowExtrChr} --threads ${task.cpus} --allow-no-sex --nonfounders --tfile BS_${x} --distance 1-ibs flat-missing square --out BS_${x}
     rm BS_${x}.tped BS_${x}.tfam
-    MakeTree.py ${x} && rm BS_${x}.mdist*
+    MakeTree ${x} && rm BS_${x}.mdist*
     """
 }
 
@@ -208,7 +208,7 @@ process consensus {
 
     script:
     """
-    ConsensusTree.py ${bstree}
+    ConsensusTree ${bstree}
     """
 }
 
@@ -224,7 +224,7 @@ process fixTree {
 
     script:
     """
-    FixGraphlanXml.py -i ${cns} -g ${params.groups} > final.xml
+    FixGraphlanXml -i ${cns} -g ${params.groups} > final.xml
     """
 }
 
@@ -245,6 +245,6 @@ process graphlan {
 
     script:
     """
-    graphlan.py ${fin} my_plot.png --dpi 300 --size 15
+    graphlan ${fin} my_plot.png --dpi 300 --size 15
     """
 }

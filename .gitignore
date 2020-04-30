@@ -1,3 +1,4 @@
+dockerimage/
 .vscode
 *.pyc
 *TEST*
