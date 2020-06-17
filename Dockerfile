@@ -37,7 +37,7 @@ RUN cd /app/plink && \
 
 
 # Install R and annex libraries
-RUN apt-get -y --fix-missing install r-base || apt-get -y --fix-missing install r-base 
+RUN apt-get -y install r-base || apt-get -y --fix-missing install r-base 
 RUN Rscript -e 'install.packages("httr", repos="https://cloud.r-project.org")'
 RUN Rscript -e 'install.packages("rvest", repos="https://cloud.r-project.org")'
 RUN Rscript -e 'install.packages("xml2", repos="https://cloud.r-project.org")'
