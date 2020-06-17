@@ -5,58 +5,23 @@
  * and read pairs by using the command line options
  */
 params.infile = "file.vcf.gz"
+params.ftype = 'bed'
 params.groups = "myfile.txt"
-params.bootstrap = 10
-params.listfolder = "${baseDir}/LISTS"
-params.outfolder = "${baseDir}/OUTPUT"
 params.spp = 'cow'
-params.allowExtrChr='--allow-extra-chr'
-params.setHHmiss='--set-hh-missing'
+params.bootstrap = 10
+params.outfolder = "${baseDir}/OUTPUT"
+params.dpi = 300
+params.size = 10
+params.mrkS = 1 
+params.subset = 1000000
+params.mrkR = '1.0'
+params.allowExtrChr = '--allow-extra-chr'
+params.setHHmiss = '--set-hh-missing'
+
 
 /*
  * Step 1. Create file TPED/TMAP
  */
-process getType {
-
-    tag "getF"
-
-    output:
-    stdout ftype_ch
-
-    script:
-    """
-    python -c "import sys; filename=sys.argv[1].strip().split('/')[-1]; filesep=filename.split('.'); filesep = [ i for i in filesep if i != 'gz' and i!='bz' and i != 'bz2' and i!='zip' ]; print(filesep[-1]) " ${params.inputfile}
-    """
-}
-
-ftype_ch.set {ftype_ch_2}
-
-process getName {
-
-    tag "getN"
-
-    input:
-    val ftype from ftype_ch_2
-
-    output:
-    stdout bname_ch
-
-    script:
-    """
-    if [ "${ftype}" == "ped" ]
-    then    
-        python -c "import sys; print( sys.argv[1].replace('.ped', '') )" ${params.inputfile}
-    elif [ "${ftype}" == "bed" ]
-    then
-        python -c "import sys; print( sys.argv[1].replace('.bed', '') )" ${params.inputfile}
-    elif [ "${ftype}" != "${params.inputfile}" ]
-    then
-        python -c "import sys; print( sys.argv[1].replace('.{}'.format(sys.argv[2]), '') )" ${params.inputfile} ${ftype}
-    else
-        echo ${params.inputfile}
-    fi
-    """
-}
 
 process transpose {
     tag "transp"
@@ -64,41 +29,34 @@ process transpose {
     errorStrategy { task.exitStatus == 0 ? 'finish' : 'retry' }
     maxRetries = 1
     
-    
-
-    input:
-    val ftype from ftype_ch
-    val bname from bname_ch
-
     output:
     tuple "transposed.tped", "transposed.tfam" into transposed_ch
 
     script:
-    """
-    if [ "${ftype}" == "vcf" ]; then
-        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --vcf ${params.inputfile} --recode transpose --out transposed --threads ${task.cpus}
-    elif [ "${ftype}" == "bcf" ]; then
-        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --bcf ${params.inputfile} --recode transpose --out transposed --threads ${task.cpus}
-    elif [ "${ftype}" == "ped" ]; then
-        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --file ${bname} --recode transpose --out transposed --threads ${task.cpus}
-    elif [ "${ftype}" == "bed" ]; then
-        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --bfile ${bname} --recode transpose --out transposed --threads ${task.cpus}
+    if( params.ftype == 'vcf' )
+        """
+        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --vcf ${params.infile} --recode transpose --out transposed --threads ${task.cpus}
+        """
+    else if( params.ftype == 'bcf' )
+        """
+        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --bcf ${params.infile} --recode transpose --out transposed --threads ${task.cpus}
+        """
+    else if( params.ftype == 'ped' )
+        """
+        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --file ${params.infile} --recode transpose --out transposed --threads ${task.cpus}
+        """
+    else if( params.ftype == 'bed' )
+        """
+        plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --bfile ${params.infile} --recode transpose --out transposed --threads ${task.cpus}
+        """
+    else if ( params.ftype == "tped" )
+        """
+        ln -s ${params.infile}.tped transposed.tped
+        ln -s ${params.infile}.tfam transposed.tfam
+        """
     else
-        if [ -e "${params.inputfile}.bed" ]; then
-            plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --bfile ${params.inputfile} --recode transpose --out transposed --threads ${task.cpus}
-        elif [ -e "${params.inputfile}.ped" ]; then
-            plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --file ${params.inputfile} --recode transpose --out transposed --threads ${task.cpus}
-        elif [ -e "${params.inputfile}.vcf" ]; then
-            plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --vcf ${params.inputfile}.vcf --recode transpose --out transposed --threads ${task.cpus}
-        elif [ -e "${params.inputfile}.vcf.gz" ]; then
-            plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --vcf ${params.inputfile}.vcf.gz --recode transpose --out transposed --threads ${task.cpus}
-        elif [ -e "${params.inputfile}.bcf" ]; then
-            plink --${params.spp} ${params.allowExtrChr} ${params.setHHmiss} --bcf ${params.inputfile}.bcf --recode transpose --out transposed --threads ${task.cpus}
-        else
-            echo "No file"
-        fi
-    fi
-    """
+        error "Invalid file type: ${params.ftype}"
+
 }
 
 transposed_ch.into { tr1_ch; tr2_ch }
@@ -111,16 +69,15 @@ process makeBSlists {
     tag "makeBS"
 
     input:
-    //each x from 1..params.bootstrap
     tuple tped, tfam from tr1_ch
 
     output:
-    // tuple x, "BS_${x}.txt" into BootstrapLists
+    //Save output path to a channel
     path "LISTS" into workdir_ch
 
     script:
     """
-    MakeBootstrapLists ${tped} ${params.bootstrap}
+    MakeBootstrapLists ${tped} ${params.bootstrap} ${params.subset}
     if [ ! -e LISTS ]; then mkdir LISTS; fi
     mv BS_*.txt ./LISTS
     """
@@ -130,10 +87,12 @@ process getBSlists {
     tag "getBS"
 
     input:
+    //Collect the generated files
     path mypath from workdir_ch
     each x from 1..params.bootstrap
 
     output:
+    // Save every file with it's index in a new channel
     tuple x, "${mypath}/BS_${x}.txt" into BootstrapLists
 
     script:
@@ -224,7 +183,7 @@ process fixTree {
 
     script:
     """
-    FixGraphlanXml -i ${cns} -g ${params.groups} > final.xml
+    FixGraphlanXml -i ${cns} -g ${params.groups} -f ${params.mrkS} -m ${params.mrkR} > final.xml
     """
 }
 
@@ -241,10 +200,10 @@ process graphlan {
     file fin from final_ch
 
     output:
-    file "my_plot.png"
+    file "my_plot.dpi${params.dpi}.size${params.size}.mrkS${params.mrkS}.mrkR${params.mrkR}.png"
 
     script:
     """
-    graphlan ${fin} my_plot.png --dpi 300 --size 15
+    graphlan.py ${fin} my_plot.dpi${params.dpi}.size${params.size}.mrkS${params.mrkS}.mrkR${params.mrkR}.png --dpi ${params.dpi} --size ${params.size}
     """
 }
