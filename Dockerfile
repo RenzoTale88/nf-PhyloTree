@@ -30,17 +30,17 @@ RUN cd /app/plink && \
     apt-get remove -y wget unzip
 
 # Install additional scripts 
-ADD ./arrange /usr/local/bin/
+ADD ./bin/arrange /usr/local/bin/
 RUN chmod a+x /usr/local/bin/arrange
-ADD ./BsTpedTmap /usr/local/bin/ 
+ADD ./bin/BsTpedTmap /usr/local/bin/ 
 RUN chmod a+x /usr/local/bin/BsTpedTmap
-ADD ./ConsensusTree /usr/local/bin/
+ADD ./bin/ConsensusTree /usr/local/bin/
 RUN chmod a+x /usr/local/bin/ConsensusTree
-ADD ./FixGraphlanXml /usr/local/bin/
+ADD ./bin/FixGraphlanXml /usr/local/bin/
 RUN chmod a+x /usr/local/bin/FixGraphlanXml
-ADD ./MakeBootstrapLists /usr/local/bin/
+ADD ./bin/MakeBootstrapLists /usr/local/bin/
 RUN chmod a+x /usr/local/bin/MakeBootstrapLists
-ADD ./MakeTree /usr/local/bin/ 
+ADD ./bin/MakeTree /usr/local/bin/ 
 RUN chmod a+x /usr/local/bin/MakeTree
 
 # Install python and its packages
