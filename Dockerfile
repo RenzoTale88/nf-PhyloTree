@@ -7,13 +7,12 @@ RUN apt-get install -y less gawk unzip wget  || \
 RUN export TZ=Europe/London
 RUN apt-get install -y tzdata || apt-get install -y --fix-missing tzdata 
 RUN apt-get install -y libssl-dev libcurl4-openssl-dev libxml2-dev || apt-get install --fix-missing -y libssl-dev libcurl4-openssl-dev libxml2-dev
+RUN apt-get install -y mercurial curl || apt-get install --fix-missing -y mercurial curl
 
 # Install graphlan
 RUN mkdir /app
-ADD graphlan.zip /app/
 RUN cd /app && \
-    unzip graphlan.zip && \
-    rm graphlan.zip && \
+    hg clone https://hg@bitbucket.org/nsegata/graphlan \
     cp -r /app/graphlan/* /usr/local/bin/ && \
     chmod +x /usr/local/bin/graphlan.py && \
     rm -rf /app/graphlan/ /app/graphlan.py
