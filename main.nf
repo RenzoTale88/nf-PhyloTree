@@ -129,7 +129,7 @@ process ibs {
 
 process concatenateBootstrapReplicates {
     tag "combine"
-    publishDir "${params.outfolder}/combined", mode: 'copy'
+    publishDir "${params.outfolder}/combined", mode: 'copy', overwrite: true
 
     input:
     file bootstrapTreeList from bootstrapReplicateTrees.collect()
@@ -157,7 +157,7 @@ process concatenateBootstrapReplicates {
 
 process consensus {
     tag "consensusTree"
-    publishDir "${params.outfolder}/consensus", mode: 'copy'
+    publishDir "${params.outfolder}/consensus", mode: 'copy', overwrite: true
 
     input:
     file bstree from concat_ch
@@ -173,7 +173,7 @@ process consensus {
 
 process fixTree {
     tag "fixTree"
-    publishDir "${params.outfolder}/fixed", mode: 'copy'
+    publishDir "${params.outfolder}/fixed", mode: 'copy', overwrite: true
 
     input:
     file cns from consense_ch
@@ -194,7 +194,7 @@ process fixTree {
 
 process graphlan {
     tag "graphlan"
-    publishDir "${params.outfolder}/picture", mode: 'copy'
+    publishDir "${params.outfolder}/picture", mode: 'copy', overwrite: true
 
     input:
     file fin from final_ch
