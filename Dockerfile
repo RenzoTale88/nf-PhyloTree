@@ -47,6 +47,3 @@ RUN Rscript -e 'install.packages("tidyverse", repos="https://cloud.r-project.org
 RUN apt-get remove -y unzip wget 
 RUN apt autoclean -y
 RUN apt autoremove -y
-
-# Add all to the path
-WORKDIR /app/data/
