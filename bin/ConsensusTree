@@ -1,12 +1,60 @@
 #!/usr/bin/env python
 
+from ete3 import Tree, Phyloxml, phyloxml
+
+# Load phylogenetic tree
+def loadTree(treefile):
+    try:
+        intree = Tree(treefile)
+        return intree
+    except:
+        try:
+            intree =  PhyloxmlTree()
+            intree.build_from_file(treefile)
+            print("Read phyloXML tree")
+            return intree
+        except:
+            return None
+
+
+def rearrange_depth(mytree):
+    nlev = 2
+    mytree.convert_to_ultrametric(tree_length=nlev, strategy='balanced')
+    distsR = [int(mytree.get_distance(i)) == mytree.get_distance(i) for i in mytree.iter_descendants() ]
+    while sum(distsR) != len(distsR):
+        nlev += 1
+        mytree.convert_to_ultrametric(tree_length=nlev, strategy='balanced')
+        distsR = [int(mytree.get_distance(i)) == mytree.get_distance(i) for i in mytree.iter_descendants() ]
+    print("Minimal depth: {}".format(nlev))
+    return mytree
+
+
+def parseTree(intree, outtree):
+    mytree = loadTree(intree)
+    if mytree is None:
+        return None
+
+    #Get minimum integer ultrametric distance
+    mytree.convert_to_ultrametric(tree_length=2, strategy='balanced')
+    print("Normalized tree depth.")
+
+    mytree.write(outfile=outtree)
+
+    return 0
+
 def main():
     from Bio import Phylo
     from Bio.Phylo.Consensus import majority_consensus
     import sys
     trees = list(Phylo.parse(sys.argv[1], 'newick'))
     majority_tree = majority_consensus(trees, 0)
-    Phylo.write(majority_tree, 'consensus.xml', 'phyloxml')    
+    majority_tree.ladderize()
+    Phylo.write(majority_tree, 'tmp.nwk', 'newick')
+    parseTree('tmp.nwk', 'consensus.nwk')
+    finaltree = Phylo.read('consensus.nwk', 'newick')
+    Phylo.write(finaltree, 'consensus.xml', 'phyloxml')
+
+
 
 
 if __name__ == "__main__":
