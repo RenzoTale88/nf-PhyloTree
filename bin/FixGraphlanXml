@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 
 def getColours(annotation, groups):
     import random as rn
@@ -170,8 +171,6 @@ def withColours(inxml, font_size, markerScale):
 
 
 
-
-
 def main():
     args = parser()
 
@@ -180,7 +179,7 @@ def main():
     inxml = args.infile
     font_size = int(args.font_size)
     markerScale = float(args.markerScale)
-    if args.ingroup:
+    if os.path.exists(args.ingroup):
         assignments = { line.strip().split()[1] : line.strip().split()[0] for line in open(args.ingroup) }
         groups = list(set( assignments.values() ))
         colours = getColours(assignments, groups)
