@@ -22,7 +22,7 @@ RUN apt-get install -y tzdata || apt-get install -y --fix-missing tzdata
 RUN apt-get install -y libssl-dev libcurl4-openssl-dev libxml2-dev
 
 # Install graphlan
-RUN conda install -c bioconda -y -c conda-forge colorama colormap biopython lxml matplotlib easydev graphlan
+RUN conda install -c etetoolkit -c bioconda -y -c conda-forge colorama colormap biopython lxml matplotlib easydev graphlan ete3
 
 # Install plink
 RUN mkdir /app/
