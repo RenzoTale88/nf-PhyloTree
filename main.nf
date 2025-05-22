@@ -1,6 +1,6 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl=2
- 
+include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_graphseq_pipeline'
 /*
  * Defines some parameters in order to specify the refence genomes
  * and read pairs by using the command line options
@@ -12,6 +12,7 @@ nextflow.enable.dsl=2
 
 process transpose_inputs {
     label "large"
+    cpus params.plink_cpus
     tag "transpose"
 
     input:
@@ -27,21 +28,25 @@ process transpose_inputs {
     if (params.karyo){
         karyo = "--chr-set ${params.karyo}"
     } else if (params.spp) {
-        karyo = "--${params.spp}"
+        if (params.spp == 'human'){
+            karyo = ""
+        } else {
+            karyo = "--${params.spp}"
+        }
     } else {
         karyo = ""
     }
-    def infile = ""
+    def input = ""
     def half_calls_cfg = ""
     if( mode == 'vcf' || mode == 'bcf'){
-        infile = "--${mode} ${inputs[0]}"
+        input = "--${mode} ${inputs[0]}"
         half_calls_cfg = "--vcf-half-call ${params.halfcalls}"
     } else if (mode == 'bed'){
-        infile = "--bed ${inputs[0]} --bim ${inputs[1]} --fam ${inputs[2]}"
+        input = "--bed ${inputs[0]} --bim ${inputs[1]} --fam ${inputs[2]}"
     } else if (mode == 'ped'){
-        infile = "--ped ${inputs[0]} --map ${inputs[1]}"
+        input = "--ped ${inputs[0]} --map ${inputs[1]}"
     } else if (mode == 'tped'){
-        infile = "--tped ${inputs[0]} --tfam ${inputs[1]}"
+        input = "--tped ${inputs[0]} --tfam ${inputs[1]}"
     } else {
         error "Invalid file type: ${params.ftype}"
     }
@@ -49,7 +54,7 @@ process transpose_inputs {
     def sethhmis = params.setHHmiss ? "--set-hh-missing" : ""
     if (params.ftype != 'tped')
     """
-    plink ${karyo} ${extrachr} ${sethhmis} ${infile} ${half_calls_cfg} --recode transpose --out transposed --threads ${task.cpus}
+    plink ${karyo} ${extrachr} ${sethhmis} ${input} ${half_calls_cfg} --recode transpose --out transposed --threads ${task.cpus}
     """
 }
 
@@ -129,6 +134,7 @@ process tpedBS {
 process ibs {     
     tag "ibs.${x}"
     label "medium"
+    cpus params.plink_cpus
 
     input: 
         tuple val(x), path(tped), path(tfam)
@@ -214,33 +220,42 @@ process graphlan {
 }
 
 workflow {
+    // Log stuff
+    PIPELINE_INITIALISATION (
+        params.version,
+        params.validate_params,
+        params.monochrome_logs,
+        args,
+        params.outdir
+    )
+
     groups_ch = Channel.fromPath(params.groups, checkIfExists: true)
     if( params.ftype == 'vcf' || params.ftype == 'bcf' ){
         input_ch = Channel.from([
             params.ftype,
-            file(params.infile),
+            file(params.input),
             null,
             null,
         ])
     } else if (params.ftype == 'bed'){
         input_ch = Channel.from([
             params.ftype,
-            file("${params.infile}.bed"),
-            file("${params.infile}.bim"),
-            file("${params.infile}.fam"),
+            file("${params.input}.bed"),
+            file("${params.input}.bim"),
+            file("${params.input}.fam"),
         ])
     } else if (params.ftype == 'ped'){
         input_ch = Channel.from([
             params.ftype,
-            file("${params.infile}.ped"),
-            file("${params.infile}.map"),
+            file("${params.input}.ped"),
+            file("${params.input}.map"),
             null,
         ])
     } else if (params.ftype == 'tped'){
         input_ch = Channel.from([
             params.ftype,
-            file("${params.infile}.tped"),
-            file("${params.infile}.tfam"),
+            file("${params.input}.tped"),
+            file("${params.input}.tfam"),
             null,
         ])
     } else {
