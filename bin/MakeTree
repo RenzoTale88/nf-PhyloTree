@@ -19,7 +19,11 @@ def main():
         vals.append(tmp)
     DistMat = TC._DistanceMatrix(samples, vals)
     constructor = TC.DistanceTreeConstructor()
-    tree = constructor.nj(DistMat)
+    if sys.argv[1] == 'upgma':
+        tree = constructor.upgma(DistMat)
+    else:
+        tree = constructor.nj(DistMat)
+
     Phylo.write(tree, 'outtree_{}.nwk'.format(nbs), 'newick')
     print("Saved to outtree_{}.nwk".format(nbs))
 

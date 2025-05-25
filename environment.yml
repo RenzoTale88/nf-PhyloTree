@@ -10,6 +10,7 @@ dependencies:
   - matplotlib
   - easydev
   - graphlan
+  - phylip
   - ete3
   - plink=1.90b4
   - python

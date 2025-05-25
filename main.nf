@@ -83,7 +83,7 @@ process makeBSlists {
 
 process getBSlists {
     tag "getBS"
-    label "small"
+    label "medium"
 
     input:
     //Collect the generated files
@@ -104,7 +104,7 @@ process getBSlists {
 
 process tpedBS {
     tag "tpedBS"
-    label "small"
+    label "medium"
     conda "python=3"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'https://depot.galaxyproject.org/singularity/pysam:0.22.1--py39hcada746_0' :
@@ -133,7 +133,7 @@ process tpedBS {
 
 process ibs {     
     tag "ibs.${x}"
-    label "medium"
+    label "large"
     cpus params.plink_cpus
 
     input: 
@@ -141,6 +141,7 @@ process ibs {
         
     output: 
         path "outtree_${x}.nwk", emit: bootstrapReplicateTrees
+        tuple path("${x}.mdist"), path("${x}.mdist.id"), emit: dists
         
     script:
     def karyo = ""
@@ -155,7 +156,25 @@ process ibs {
     def sethhmis = params.setHHmiss ? "--set-hh-missing" : ""
     """
     plink ${karyo} ${extrachr} ${sethhmis} --threads ${task.cpus} --allow-no-sex --nonfounders --tfile ${tped.baseName} --distance 1-ibs flat-missing square --out ${x}
-    MakeTree ${x} && rm ${x}.mdist*
+    MakeTree ${x} ${params.method}
+    """
+}
+
+process prepare_phylip {
+    label "medium"
+
+    input: 
+        tuple path(mdist), path(id)
+        
+    output: 
+        path("${mdist}.infile"), emit: infiles
+        path("${mdist}.conv.txt"), emit: conversion
+        path("${mdist}.ogroups.txt"), emit: ogroups
+        
+    script:
+    def outgroup = params.outgroup ? "${params.outgroup}" : ""
+    """
+    MakePhylipInput ${mdist} ${outgroup}
     """
 }
 
@@ -166,19 +185,46 @@ process ibs {
  * make it compliant with graphlan
  */
 
+process neighbor {
+    publishDir "${params.outdir}/", mode: 'copy', overwrite: true
+
+    input:
+    path "infiles/*"
+    path "conversion.txt"
+    val outgroup
+
+    output:
+    path "multitree.nwk", emit: multi
+    path "consensus/consensus.nwk", emit: nwk
+    path "consensus/consensus.xml", emit: xml
+
+    script:
+    def instring = params.method == 'upgma' ? "N\\nO\\n$outgroup\\nM\\n${params.bootstrap}\\n135\\nY\\n" : "O\\n$outgroup\\nM\\n${params.bootstrap}\\n135\\nY\\n"
+    """
+    cat infiles/* > infile
+    echo -e "${instring}" | neighbor
+    cp outtree multitree.nwk
+    mv outtree intree
+    mkdir consensus/
+    echo -e "R\\nY\\n" | consense && mv outtree consensus/consensus.nwk
+    Newick2Xml consensus/consensus.nwk conversion.txt && mv consensus.xml consensus/consensus.xml
+    """
+}
+
 process consensus {
     tag "consensusTree"
     publishDir "${params.outdir}/consensus", mode: 'copy', overwrite: true
 
     input:
-    path bstree
+    path "intree"
 
     output:
-    path "consensus.xml", emit: consense_ch
+    path "consensus.xml", emit: xml
+    path "consensus.nwk", emit: nwk
 
     script:
     """
-    ConsensusTree ${bstree}
+    ConsensusTree "intree"
     """
 }
 
@@ -271,13 +317,28 @@ workflow {
     bootstraps = makeBSlists.out | flatten
 
     // Run analysis
-    consensus_tree_ch = tpedBS(tped, tfam, bootstraps)
+    bootstraps_ch = tpedBS(tped, tfam, bootstraps)
     | ibs
-    | collectFile( name: "${params.outdir}/multitree.tre" )
-    | consensus
+
+    if (params.tool == "phylip") {
+        dists_ch = bootstraps_ch.dists 
+        | prepare_phylip
+        // Neioghbour joining tree
+        consensus_tree_ch = neighbor(
+            dists_ch.infiles | collect,
+            dists_ch.conversion | first | collect,
+            dists_ch.ogroups | first | splitCsv | first | flatten
+        )
+
+    } else {
+        consensus_tree_ch = bootstraps_ch.bootstrapReplicateTrees 
+        | collectFile( name: "${params.outdir}/intree" )
+        | consensus
+    }
 
     // Make plot
-    fixTree(consensus_tree_ch, groups_ch)
+    groups_ch = Channel.fromPath(params.groups, checkIfExists: true)
+    fixTree(consensus_tree_ch.xml, groups_ch)
     | graphlan
 
 }

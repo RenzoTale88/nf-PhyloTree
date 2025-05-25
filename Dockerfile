@@ -31,7 +31,7 @@ FROM ubuntu:24.04 AS runtime
 
 # Install procps in debian to make it compatible with reporting
 RUN apt-get update && \
-  apt install -y git procps file wget python3-dev python3-pip && \
+  apt install -y git procps file && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 

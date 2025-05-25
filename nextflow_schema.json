@@ -112,11 +112,31 @@
                     "description": "Size of the markers in the image",
                     "help_text": "Size of the output image."
                 },
-                "karyo": {
-                    "title": "Chromosome number",
-                    "type": "integer",
-                    "description": "Provide the chromosome number for the species",
-                    "help_text": "If the species is not directly supported by plink, this flag can provide the karyotype."
+                "tool": {
+                    "type": "string",
+                    "default": "biopython",
+                    "enum": [
+                        "biopython",
+                        "phylip"
+                    ],
+                    "description": "What tool to use to build the consensus tree.",
+                    "help_text": "Different consensus tools can lead to different tree."
+                },
+                "method": {
+                    "type": "string",
+                    "default": "nj",
+                    "enum": [
+                        "upgma",
+                        "nj"
+                    ],
+                    "description": "What method to use to build the consensus tree.",
+                    "help_text": "Different consensus methods can lead to different tree."
+                },
+                "outgroup": {
+                    "title": "Outgroup",
+                    "type": "string",
+                    "description": "Outgroup for the phylogenetic tree",
+                    "help_text": "Setting an outgroup might help in defining the right tree topology."
                 },
                 "halfcalls": {
                     "title": "VCF half-calls",
