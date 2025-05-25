@@ -9,7 +9,6 @@ def main():
         conversion_file = sys.argv[2]
         conversion_dict = {}
         with open(conversion_file, 'r') as f:
-            next(f)  # Skip header line
             for line in f:
                 group, identifier, tip_label = line.strip().split('\t')
                 conversion_dict[tip_label] = identifier
