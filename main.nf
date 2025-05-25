@@ -140,8 +140,8 @@ process ibs {
         tuple val(x), path(tped), path(tfam)
         
     output: 
-        path "outtree_${x}.nwk", emit: bootstrapReplicateTrees
         tuple path("${x}.mdist"), path("${x}.mdist.id"), emit: dists
+        path "outtree_${x}.nwk", emit: bootstrapReplicateTrees, optional: true
         
     script:
     def karyo = ""
@@ -154,9 +154,10 @@ process ibs {
     }
     def extrachr = params.allowExtrChr ? "--allow-extra-chr" : ""
     def sethhmis = params.setHHmiss ? "--set-hh-missing" : ""
+    def make_tree = params.tool == "biopython" ? "MakeTree ${x} ${params.method}" : ""
     """
     plink ${karyo} ${extrachr} ${sethhmis} --threads ${task.cpus} --allow-no-sex --nonfounders --tfile ${tped.baseName} --distance 1-ibs flat-missing square --out ${x}
-    MakeTree ${x} ${params.method}
+    ${make_tree}
     """
 }
 
