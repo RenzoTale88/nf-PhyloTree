@@ -173,7 +173,7 @@ process prepare_phylip {
         path("${mdist}.ogroups.txt"), emit: ogroups
         
     script:
-    def outgroup = params.outgroup ? "${params.outgroup}" : ""
+    def outgroup = params.outgroup && params.method == 'nj' ? "${params.outgroup}" : ""
     """
     MakePhylipInput ${mdist} ${outgroup}
     """
@@ -276,6 +276,15 @@ workflow {
         params.outdir
     )
 
+    // Notify if asking upgma and outgroup
+    if (params.method == 'upgma' && params.outgroup) {
+        log.warn "You are using the UPGMA method with an outgroup, which is ignored by the algorithm."
+    }
+    if (params.tool == 'biopython' && params.outgroup) {
+        log.warn "The biopython methods currently only works without outgroup."
+    }
+
+    // Prepare the inputs
     groups_ch = Channel.fromPath(params.groups, checkIfExists: true)
     if( params.ftype == 'vcf' || params.ftype == 'bcf' ){
         input_ch = Channel.from([
