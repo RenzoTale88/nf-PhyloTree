@@ -1,10 +1,29 @@
-#!/usr/bin/env Rscript
-options(warn=-1, message = FALSE, readr.num_columns = 0)
-suppressPackageStartupMessages(library(tidyverse, quietly = TRUE))
-args = commandArgs(T)
-nboot = args[1]
+#!/usr/bin/env python3
 
-tped = read_delim(paste("BS_", nboot, ".tped", sep = ''), delim = ' ', col_names = F) %>% arrange(X1, X4) 
-sortped = tped[order(tped$X1, tped$X4, decreasing = F),]
-write.table(sortped, paste("BS_", nboot, ".tped", sep = ''), sep = ' ', col.names = F, row.names = F, quote = F)
+import sys
 
+# Get the bootstrap number from command line argument
+nboot = sys.argv[1]
+
+# Read the TPED file
+filename = f"BS_{nboot}.tped"
+with open(filename, 'r') as file:
+    lines = file.readlines()
+
+# Parse the lines and create a list of lists
+parsed_lines = []
+for line in lines:
+    fields = line.strip().split(' ')
+    # Convert column 4 to integer for proper numeric sorting
+    fields[3] = int(fields[3])
+    parsed_lines.append(fields)
+
+# Sort by column 1 (index 0) and then by column 4 (index 3)
+sorted_lines = sorted(parsed_lines, key=lambda x: (x[0], x[3]))
+
+# Convert back to strings and write to the original file
+with open(filename, 'w') as file:
+    for fields in sorted_lines:
+        # Convert the integer back to string
+        fields[3] = str(fields[3])
+        file.write(' '.join(fields) + '\n')

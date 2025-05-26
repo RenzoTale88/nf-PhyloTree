@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+from Bio import Phylo
+import sys
+
+def main():
+    finaltree = Phylo.read(sys.argv[1], 'newick')
+
+    if len(sys.argv) > 2:
+        conversion_file = sys.argv[2]
+        conversion_dict = {}
+        with open(conversion_file, 'r') as f:
+            for line in f:
+                group, identifier, tip_label = line.strip().split('\t')
+                conversion_dict[tip_label] = identifier
+
+        for clade in finaltree.find_clades():
+            iid_name = conversion_dict.get(clade.name, clade.name)
+            print("Converting {} to {}".format(clade.name, iid_name))
+            if clade.name in conversion_dict:
+                clade.name = conversion_dict[clade.name]
+    Phylo.write(finaltree, 'consensus.nwk', 'newick')
+    Phylo.write(finaltree, 'consensus.xml', 'phyloxml')
+
+if __name__ == "__main__":
+    main()

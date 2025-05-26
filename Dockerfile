@@ -1,52 +1,44 @@
-FROM continuumio/miniconda
+FROM condaforge/mambaforge:latest AS build
 
-# Install scripts 
-ADD ./bin/arrange /usr/local/bin/
-RUN chmod a+x /usr/local/bin/arrange
-ADD ./bin/BsTpedTmap /usr/local/bin/ 
-RUN chmod a+x /usr/local/bin/BsTpedTmap
-ADD ./bin/ConsensusTree /usr/local/bin/
-RUN chmod a+x /usr/local/bin/ConsensusTree
-ADD ./bin/FixGraphlanXml /usr/local/bin/
-RUN chmod a+x /usr/local/bin/FixGraphlanXml
-ADD ./bin/MakeBootstrapLists /usr/local/bin/
-RUN chmod a+x /usr/local/bin/MakeBootstrapLists
-ADD ./bin/MakeTree /usr/local/bin/ 
-RUN chmod a+x /usr/local/bin/MakeTree
+LABEL authors="andrea.talenti@ed.ac.uk" \
+      description="Docker image containing base requirements for ADMIXBoots pipelines"
 
-# Install ubuntu dependencies
-RUN apt-get update
-RUN apt-get install -y less gawk unzip wget
-RUN export TZ=Europe/London
-RUN apt-get install -y tzdata || apt-get install -y --fix-missing tzdata 
-RUN apt-get install -y libssl-dev libcurl4-openssl-dev libxml2-dev
+# Install the updates first
+RUN apt-get update && \
+  apt-get install -y gcc g++ git make zlib1g-dev && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install graphlan
-RUN conda install -c etetoolkit -c bioconda -y -c conda-forge colorama colormap biopython lxml matplotlib easydev graphlan ete3
+# Install the package as normal:
+COPY environment.yml .
+RUN mamba env create -f environment.yml
 
-# Install plink
-RUN mkdir /app/
-RUN mkdir /app/plink 
-RUN cd /app/plink && \ 
-    wget http://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20200428.zip &&\
-    unzip plink*.zip && \ 
-    cp plink /usr/local/bin && \
-    chmod a+x /usr/local/bin/plink && \
-    cd .. && \
-    rm -rf /app/plink 
+# Install conda-pack:
+RUN mamba install -c conda-forge conda-pack
 
+# Use conda-pack to create a standalone enviornment
+# in /venv:
+RUN conda-pack --ignore-missing-files -n phylotree -o /tmp/env.tar && \
+    mkdir /venv && \
+    cd /venv && \
+    tar xf /tmp/env.tar && \
+    /venv/bin/conda-unpack
 
-# Install R and annex libraries
-RUN apt-get -y install r-base || apt-get -y --fix-missing install r-base 
-RUN Rscript -e 'install.packages("httr", repos="https://cloud.r-project.org")'
-RUN Rscript -e 'install.packages("rvest", repos="https://cloud.r-project.org")'
-RUN Rscript -e 'install.packages("xml2", repos="https://cloud.r-project.org")'
-RUN Rscript -e 'install.packages("tidyverse", repos="https://cloud.r-project.org")'
+# The runtime-stage image; we can use Debian as the
+# base image since the Conda env also includes Python
+# for us.
+FROM ubuntu:24.04 AS runtime
 
-# Clean up
-RUN apt-get remove -y unzip wget 
-RUN apt autoclean -y
-RUN apt autoremove -y
+# Install procps in debian to make it compatible with reporting
+RUN apt-get update && \
+  apt install -y git procps file && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Add all to the path
-WORKDIR /app/data/
+# Copy /venv from the previous stage:
+COPY --from=build /venv /venv
+
+# When image is run, run the code with the environment
+# activated:
+ENV PATH=/venv/bin/:$PATH
+SHELL ["/bin/bash", "-c"]

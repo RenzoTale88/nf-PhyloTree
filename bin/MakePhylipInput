@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+import sys
+
+outgroup = None
+if len(sys.argv) == 3:
+	outgroup = sys.argv[2]
+	outgroup=outgroup.replace('_','').replace('-','')
+
+id_in = open(sys.argv[1] + '.id')
+mat_in = open(sys.argv[1])
+
+# Input collections
+ids = []
+fids = []
+indexes = []
+n_fids = {}
+nind = 0
+
+# Read id matrix
+print('Reading ID file...')
+for n, i in enumerate(id_in):
+	fid, iid = i.strip().split()
+	ids.append(iid)
+	fid = fid.replace('_', '').replace('-', '')
+	fids.append(fid)
+	if outgroup != None and fid == outgroup:
+		indexes.append(n + 1)
+	if i[0] not in n_fids:
+		n_fids[fid] = 1
+	nind += 1		
+print('Done.\n Read %i individuals.\n' % nind)
+
+# Create progressive new ids
+print('Creating new ids for individuals...')
+out_ids = []
+for i in fids:
+	if len(i) >= 6:
+		new_id = i[0:6] + '_' + '%03d' % n_fids[i]
+	else:
+		nzeroadd = 10 - len(i) - 4
+		new_id = i + '_' + '0' * nzeroadd + '%03d' % n_fids[i]
+	out_ids.append(new_id)
+	n_fids[i] += 1
+
+out_conv = open('%s.conv.txt' % sys.argv[1], 'w')
+out_mat = open('%s.infile' % sys.argv[1], 'w')
+
+print('Writing convertion dataset in: %s.conv.txt' % sys.argv[1])
+for n, i in enumerate(out_ids):
+	out_conv.write('%s\t%s\t%s\n' % (fids[n], ids[n], i))
+out_conv.close()
+
+print('Saving indexes of outgroup.')
+outgr = open('%s.ogroups.txt' % sys.argv[1], 'w')
+if outgroup != None:
+	[outgr.write('%i\n' % (i)) for i in indexes]
+else:
+	outgr.write("1\n")
+outgr.close()
+
+
+print('Saving new matrix in: %s.infile' % sys.argv[1])
+out_mat.write('%i\n' % nind)
+for n, i in enumerate(mat_in):
+	out_mat.write('%s %s' % (out_ids[n], i))
+print('Done.\n\nAll convertion completed.')
+
+out_mat.close()
+
+

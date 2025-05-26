@@ -1,0 +1,16 @@
+name: phylotree
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - colorama
+  - colormap
+  - biopython
+  - lxml
+  - matplotlib
+  - easydev
+  - graphlan
+  - phylip
+  - ete3
+  - plink=1.90b4
+  - python
