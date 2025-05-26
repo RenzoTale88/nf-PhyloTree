@@ -207,8 +207,8 @@ process neighbor {
     cp outtree multitree.nwk
     mv outtree intree
     mkdir consensus/
-    echo -e "R\\nY\\n" | consense && mv outtree consensus/consensus.nwk
-    Newick2Xml consensus/consensus.nwk conversion.txt && mv consensus.xml consensus/consensus.xml
+    echo -e "R\\nY\\n" | consense && mv outtree tmp.nwk
+    Newick2Xml tmp.nwk conversion.txt && mv consensus.* consensus/
     """
 }
 

@@ -18,7 +18,7 @@ def main():
             print("Converting {} to {}".format(clade.name, iid_name))
             if clade.name in conversion_dict:
                 clade.name = conversion_dict[clade.name]
-
+    Phylo.write(finaltree, 'consensus.nwk', 'newick')
     Phylo.write(finaltree, 'consensus.xml', 'phyloxml')
 
 if __name__ == "__main__":
